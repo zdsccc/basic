@@ -1,0 +1,38 @@
+<script>
+    <!--穷举-->
+    var str0 = "";
+    var str1 = "jd,";
+    var str2 = "sn,";
+    var str3 = "jd,sn,";
+    var str4 = "sn,jd,";
+
+    var base0 = '';
+    var base1 = 'jd,';
+    var base2 = 'sn,';
+
+    var arr = new Array();
+
+    for (var i = 0; i < 3; i ++) {
+        for(var j = 0; j < 3; j ++) {
+            if ((j == i && j == 0) || j != i ) {
+                arr.push(window["base"+i] + window["base"+j]);
+            }
+        }
+    }
+    console.log(arr);
+    // 数组去重，可能会有数据类型的变化
+    function unique (arr) {
+        var result = [];
+        var temp = [];
+        for (var i in arr) {
+            temp[arr[i]] = 1;
+        }
+        // return temp;
+        for (var j in temp) {
+            result.push(j);
+        }
+        return result;
+    }
+    var allPossibleMclist = unique(arr);
+    console.log(allPossibleMclist);
+</script>

@@ -1,0 +1,100 @@
+.frms
+{
+	margin:0 auto;
+	padding:10px;
+	font-family:Tahoma, Geneva, sans-serif;
+	color:#333;
+	font-size:.9em;
+	line-height:1.2em;
+}
+.frms input[type="text"],textarea
+{
+	width:59%;
+	background:#fff;
+	border:#ddd 1px solid;
+	border-radius:.35em;
+	-moz-border-radius:.35em;
+	-webkit-border-radius:.35em;
+	-o-border-radius:.35em;
+	padding:0 .5%;
+	margin-top:5px;
+	margin-bottom:15px;
+	height:35px;
+}
+
+textarea
+{
+	width:99%;
+	height:20%;
+	background:#fff;
+	border:#ddd 1px solid;
+	border-radius:.35em;
+	-moz-border-radius:.35em;
+	-webkit-border-radius:.35em;
+	-o-border-radius:.35em;
+	padding:1% .5%;
+	margin-top:5px;
+	margin-bottom:15px;
+    font-weight:bold;
+}
+.frms textarea
+{
+	min-height:200px;
+	font-family:Tahoma, Geneva, sans-serif;
+	font-size:1.31em;
+	padding:5px .5%;
+	line-height:18px;
+}
+.frms input:hover,textarea:hover,select:hover
+{
+	box-shadow:#dae1e5 0px 0px 5px;
+	-moz-box-shadow:#dae1e5 0px 0px 5px;
+	-webkit-box-shadow:#dae1e5 0px 0px 5px;
+	-o-box-shadow:#dae1e5 0px 0px 5px;
+}
+.frms input:focus,textarea:focus,select:focus
+{
+	-webkit-box-shadow: inset 7px 4px 7px -7px rgba(0,0,0,0.42);
+-moz-box-shadow: inset 7px 4px 7px -7px rgba(0,0,0,0.42);
+box-shadow: inset 7px 4px 7px -7px rgba(0,0,0,0.42);
+	
+	border:#9d9983 1px solid;
+}
+.frms input[type="submit"]
+{
+	padding:7px 14px;
+	font-weight:bold;
+	color:#fff;
+	cursor:pointer;
+	border-radius:.3em;
+	-moz-border-radius:.2em;
+	-webkit-border-radius:.2em;
+	-o-border-radius:.2em;
+	margin:10px 0;
+	border:none;
+	background:#75ab22;
+	border-bottom:#629826 3px solid;
+	text-shadow:#396e12 1px 1px 0px;
+}
+.resp_code
+{
+margin:5px 10px 10px 300px;
+padding:10px 20px 10px 20px;
+font:normal 1em/1.3em Tahoma, Geneva, sans-serif;
+color:#333;
+background:#f8f8f8;
+border:#ddd 1px solid;
+border-radius:.25em;
+overflow:auto;width:50%;
+}
+@media screen and (max-width: 480px)
+{
+.resp_code{width:auto !important;margin:0px !important;}
+}
+
+body {
+    background: #fff none repeat scroll 0 0;
+    color: #666;
+    font: 0.81em/150% Tahoma,Geneva,sans-serif;
+    word-wrap: break-word;
+}

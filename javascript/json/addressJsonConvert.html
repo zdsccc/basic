@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<script src="jsAddress.js"></script>
+<script>
+    var l=provinceList.length;
+    for(var i=0;i<l;i++){
+        num = i + 1;
+        if (num < 10) {
+            str = "0" + num
+        } else {
+            str = num.toString();
+        }
+        document.write('{"name":"'+provinceList[i].name+'","value":"'+str+'0000"},');
+        document.write("<br />");
+        city_l = provinceList[i].cityList.length;
+
+        for(var j=0;j<city_l;j++){
+            num2 = j + 1;
+            if (num2 < 10) {
+                str2 = "0" + num2
+            } else {
+                str2 = num2.toString();
+            }
+            document.write('{"name":"'+provinceList[i].cityList[j].name+'","value":"'+str+str2+'00","parent":"'+str+'0000"},');
+            document.write("<br />");
+            area_l = provinceList[i].cityList[j].areaList.length;
+            for(var k=0;k<area_l;k++){
+                num3 = k + 1;
+                if (num3 < 10) {
+                    str3 = "0" + num3
+                } else {
+                    str3 = num3.toString();
+                }
+                document.write('{"name":"'+provinceList[i].cityList[j].areaList[k]+'","value":"'+str+str2+str3+'","parent":"'+str+str2+'00"},');
+                document.write("<br />");
+            }
+        }
+    }
+</script>
+</body>
+</html>

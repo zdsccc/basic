@@ -1,0 +1,598 @@
+The Unexpected SQL Injection
+(When Escaping Is Not Enough)
+
+By Alexander Andonov ( sir(point)mordred(on)gmail )
+Version 1.0
+Last Modified: 9/1/2007
+
+
+Abstract:
+We will look at several scenarios under which SQL injection may occur, 
+even though mysql_real_escape_string() has been used. There are two 
+major steps at writing SQL injection resistant code: correct validation 
+and escaping of input and proper use of the SQL syntax. Failure to comply 
+with any of them may lead to compromise. Many of the specific issues are 
+already known, but no single document mentions them all.
+Although the examples are built on PHP/MySQL, the same principles apply 
+to ASP/MSSQL and other combinations of languages and databases.
+
+
+
+0. Contents
+    1.  Introduction and rationale
+    2.  Installation
+    3.  Getting to mysql_real_escape_string()
+    4.  Integer values
+    5.  The Return of the Integer Values
+    6.  Hi, what's your column name?
+    7.  Do You LIKE My %WildCard%?
+    8.  Other Databases and Other Issues
+    9.  A Summary in Plaintext
+    10. About
+    11. References
+
+
+1. Introduction and rationale
+
+There are many papers ([1],[2],[3],[4]) and articles ([5],[6]) about 
+SQL injection in dynamically built SQL queries (as opposed to prepared 
+statements or stored procedures), and even more about how to protect 
+against it ([7],[8]). And yet web programmers continue to make crucial 
+mistakes when writing their SQL-related code; indeed there are cases 
+not explicitly mentioned in the popular tutorials, which have to be 
+handled with care. As the PHP documentation ([9]) on 
+mysql_real_escape_string() says: "This function must always 
+(with few exceptions) be used to make data safe before sending a query 
+to MySQL.". This article attempts to enumerate the said exceptions and 
+give a complete checkpoint list of protective measures. We will identify 
+some common points of failure and provide the right (and in some 
+occasions, the commonly applied wrong) solutions in hope that novice 
+programmers and pen-testers will learn to recognise them in their own 
+code should they occur.
+
+The given examples are designed to look like some common web programming
+tasks related to finding and displaying user information. On the other hand 
+they are somewhat artificial, in the sense that they are overly simplified. 
+Some of the examples of SQL injection will not work with more complex 
+queries (for example using ORDER BY and UNION require special parentheses 
+syntax which is usually hard to achieve when trying to inject SQL). 
+Nevertheless, if points of injection exist in your code, a well-versed 
+attacker will benefit from them, no matter how "hostile" to SQL injection 
+the surrounding query is.
+
+We will not discuss the possible mitigation strategies for when SQL 
+injection occurs, such as PHP and MySQL configuration options, data 
+encryption, etc., but the reader is encouraged to read more on the subject.
+
+We expect the reader to be familiar with the basics of PHP/MySQL 
+interaction and have at least sketchy idea of what SQL injection is. 
+The reference section provides some good pointers at the latter.
+
+It must also be noted that many of the presented issues have been 
+separately mentioned by security researchers before, for example [14] 
+and [15] both state the need of quotes around values, the PHP manual ([9]) 
+mentions the LIKE wildcards, and [16] lists both; [17] briefly advises 
+against using dynamic table names.
+
+2. Installation
+
+http://www.webappsec.org/projects/articles/091007.zip
+http://mordred.logris.org/articles/091007.zip
+
+The article is accompanied by a collection of examples, each offering a 
+number of tests, which can be run on a localhost server. The practices 
+displayed in the examples are only recommended in their part related to 
+SQL injection. The rest of the code is hastily (and lazily) patched up 
+to "just do the job". It displays SQL errors in the HTML, doesn't escape 
+values taken from the database before displaying them either, and the HTML 
+itself is the most minimalistic ugly street HTML that would get rendered. 
+This is not a good example of coding style, so don't mimic it (I don't 
+either). This is done intentionally, as not to distract the reader from 
+the important code. Do try to understand and apply the measures against 
+SQL injection though, and if you're interested in pen-testing as well 
+as web programming, play with the provided injection vectors.
+
+Open [db.inc.php] with your favourite editor and write the correct 
+database connection info. In the database you selected for the test, 
+import the [sql_injection_test.sql] file, which contains a simple table 
+schema with three rows of information. Load the index.php in your browser 
+and follow the examples as they are commented on in the article. If you 
+want to play with the url parameters outside of the given test cases, 
+click the [new] links to load the examples in new windows.
+
+ATTENTION!
+
+Install these scripts only on your local testing environment. If you 
+leave them on a publicly accessible host, they (and, depending on the 
+configuration, the host itself) will be exploited. You've been warned.
+
+For the sake of self-containment, the essential snippets of code will 
+also be inlined in the article. The test table has the following data in it:
+
+mysql> select * from sql_injection_test;
++--------+-------------+----------+
+| userid | username    | password |
++--------+-------------+----------+
+|      1 | Winnie      | Pooh     |
+|      2 | Edward      | Sanders  |
+|      3 | Christopher | Robin    |
++--------+-------------+----------+
+
+RunQuery($query) is a utility function that displays and runs the given 
+query and displays either the returned error or all returned rows.
+
+3. Getting to mysql_real_escape_string()
+
+---------[ Example 1. (finduser.php) ]------------
+$username = isset($_GET['u']) ? $_GET['u'] : '';
+RunQuery("SELECT userid, username FROM sql_injection_test 
+	WHERE username='$username'");
+---------[ Tests: ]------------------------------
+1. u=Winnie
+2. u=Edward
+3. u=Christopher
+4. u=Schneier
+5. u='
+6. u=' OR ''='
+7. u=' UNION ALL SELECT userid, CONCAT(username, ' ', password) 
+	FROM sql_injection_test WHERE ''='
+--------------------------------------------------
+
+Example 1 demonstrates the most basic (wrong) way of handling dynamic 
+SQL queries. The url parameter 'u' is expected to contain a username, 
+and the first four test links demonstrate how it works with existing 
+and non-existing names. The fifth test, a single quote (the 
+"breaking quote"), is the basic test if the script is vulnerable 
+(or at least if it will break), and as we see our example indeed tries 
+to execute invalid SQL. Test 6 manipulates the query to list all possible 
+users instead of just one. And finally the UNION query in test 7 lists 
+all users along with their passwords.
+
+---------[ Example 2. (finduser_fixed.php) ]---------
+$username = isset($_GET['u']) ? $_GET['u'] : '';
+$username = mysql_real_escape_string($username);
+RunQuery("SELECT `userid`, `username` FROM `sql_injection_test` 
+	WHERE `username` = '$username'");
+-----------------------------------------------------
+
+The vulnerability here arises from the ability of the attacker to inject 
+a single quote, thus closing the literal string and interpreting the rest 
+of the user input as SQL syntax. The well known remedy to that is to 
+escape all variables that will be included in the dynamic query with 
+mysql_real_escape_string(). Example 2 shows that the same attacks no 
+longer work.
+
+From now on we will escape our parameters with mysql_real_escape_string() 
+and will observe how and when this fails to protect us from SQL injection. 
+Note that even incorrectly ([10]) escaping with functions such as 
+addslashes() (or the magic_quotes functionality in PHP) has similar effects.
+
+4. Integer values
+
+---------[ Example 3. (viewprofile.php) ]------------
+$userid = isset($_GET['id']) ? $_GET['id'] : 0;
+$userid = mysql_real_escape_string($userid);
+RunQuery("SELECT userid, username FROM sql_injection_test WHERE userid=$userid");
+---------[ Tests: ]------------------------------
+1. id=0
+2. id=1
+3. id=2
+4. id=3
+5. id='
+6. id=0 or 1
+7. id=0 UNION ALL SELECT userid, CONCAT(username, ' ', password) 
+	FROM sql_injection_test WHERE 1
+8. id=0 UNION ALL SELECT userid, CONCAT(username, CHAR(32), password) 
+	FROM sql_injection_test WHERE 1
+--------------------------------------------------
+
+Example 3 accepts a numeric parameter, userid, and displays information 
+about that user. The first four tests as before demonstrate how the 
+script is expected to behave, and the 5th test shows that even the 
+escaped parameter can raise an error. The trouble here is that the query 
+assumes that the parameter will be integer and so is written without 
+quotes. The attacker, though, doesn't need a "breaking quote", as 
+whatever he enters goes directly to the query to be interpreted as 
+SQL syntax. Test 6 manipulates the WHERE clause into returning all 
+user records. As we can see from 7, mysql_real_escape_string() prevents 
+the success of injected queries that include quotes. Any such query can 
+be rewritten in a way as not to use quotes though, so test 8 succeeds 
+where 7 failed.
+
+---------[ Example 4. (viewprofile_fixed_1.php) ]------------
+$userid = isset($_GET['id']) ? $_GET['id'] : 0;
+$userid = mysql_real_escape_string($userid);
+RunQuery("SELECT `userid`, `username` FROM `sql_injection_test` 
+	WHERE `userid` = '$userid'");
+------------------------------------------------------------
+
+---------[ Example 5. (viewprofile_fixed_2.php) ]------------
+$userid = isset($_GET['id']) ? $_GET['id'] : 0;
+userid = intval($userid);
+//...
+$userid = mysql_real_escape_string($userid);
+RunQuery("SELECT `userid`, `username` FROM `sql_injection_test` 
+	WHERE `userid` = '$userid'");
+------------------------------------------------------------
+
+There are two solutions to the problem, either use quotes in the query 
+as Example 4 does, or convert the input value to int. The most robust 
+choice is shown in Example 5, where the two solutions are combined. If 
+the numeric value requirement is changed at some point in the future 
+and the input parameter is no longer forced to be int, the query will 
+still be protected.
+
+The reader must realise that input validation (in our case making sure 
+that what we expect to be an int is really int) and escaping the parameter 
+before giving it to the query are two different security steps. In this 
+particular case either one will suffice, but in general, for in-depth 
+security, you must always do both. Also, the two tasks will most probably 
+be carried by two different subsystems in your real-life code, so the 
+validating and escaping code will not be adjacent as displayed in this 
+simplified case. The topic is quite extensively covered by other 
+authors ([8]) so we will not pursue it further.
+
+5. The Return of the Integer Values
+
+---------[ Example 6. (members.php) ]------------
+$offset = isset($_GET['o']) ? $_GET['o'] : 0;
+$offset = mysql_real_escape_string($offset);
+RunQuery("SELECT userid, username FROM sql_injection_test LIMIT $offset, 10");
+---------[ Tests: ]------------------------------
+1. o=0
+2. o=1
+3. o=2
+4. o=3
+5. o='
+6. o=999999, 10 UNION ALL SELECT username, password FROM sql_injection_test LIMIT 0
+--------------------------------------------------
+
+Example 6 demonstrates another situation where integer values are used - 
+the offset and count parameters of the LIMIT clause. The script implements 
+a simple pagination feature - it displays a list of members in pages 
+of 10, accepting the starting offset in an url parameter.
+
+Having in mind the previous examples, there is no surprise that the 
+"breaking quote" in the 5th test really breaks the query, and that 
+in the 6th test a UNION-based injection can give the attacker a list 
+of usernames and their associated passwords.
+
+---------[ Example 7 (members_fixed.php) ]------------
+$offset = isset($_GET['o']) ? $_GET['o'] : 0;
+$offset = intval($offset);
+RunQuery("SELECT `userid`, `username` FROM `sql_injection_test` LIMIT $offset, 10");
+------------------------------------------------------
+
+---------[ Example 8. (members_not_fixed.php) ]------------
+$offset = isset($_GET['o']) ? $_GET['o'] : 0;
+if (is_numeric($offset))
+    RunQuery("SELECT userid, username FROM sql_injection_test LIMIT $offset, 10");
+---------[ Tests: ]------------------------------
+...
+7. o=0.0001
+8. o=0x53514c
+--------------------------------------------------
+
+The difference with the previous situation is that this integer value 
+plays another role, syntactic-wise. The two LIMIT parameters require 
+integer values, so we may not use any quotes or any escaping mechanism 
+other than intval() (or casting to int), as in Example 7. It must be 
+noted that using is_numeric() (as for example old versions ([18]) of 
+the PHP manual advised) in the validation part of the script is not a 
+sufficient check, and Example 8 shows two ways to break the query 
+(although no malicious SQL code can be injected in this way). The second 
+of those, test 8, is interesting, because while it is "numeric" from 
+the PHP point of view, it is a string literal ('SQL') for MySQL. 
+This is only of academic interest in this situation though, literals 
+encoded in this manner and longer than four characters will not pass 
+is_numeric().
+
+The other difference between examples 3-5 and 6-8 is that in the real 
+world ORDER BY will most likely be used alongside the LIMIT clause. 
+This will cause the UNION-based injection not to work, and the developer 
+may decide the code is secure. This is both naive and wrong, one must 
+always use proper escaping before inserting values in a dynamic SQL 
+query, no matter what the query looks like. The next section will 
+explain how such "hostile" to SQL injection queries can still be 
+exploited and still need to get properly protected.
+
+Another robust way to avoid these kinds of mistakes is not to specify 
+an 'offset' in the script parameters, but a 'page'. The script will 
+then have to calculate the offset based on the count of items for 
+each page, and give it to the query. The necessity for this calculation 
+makes sure that the offset will be integer when it reaches the query.
+
+6. Hi, what's your column name?
+
+---------[ Example 9. (members2.php) ]------------
+$order = isset($_GET['o']) ? $_GET['o'] : 'userid';
+$order = mysql_real_escape_string($order);
+RunQuery("SELECT userid, username FROM sql_injection_test ORDER BY $order");
+---------[ Tests: ]------------------------------
+1. o=userid
+2. o=username
+3. o=password
+4. o=honey_eaten
+5. o='
+6. o=userid ASC UNION ALL SELECT username, password FROM sql_injection_test 
+	ORDER BY userid
+7. o=IF ( (SELECT userid FROM sql_injection_test 
+		WHERE username=0x57696e6e6965 AND password=0x506f6f68), 
+	userid, username)
+8. o=IF ( (SELECT userid FROM sql_injection_test 
+		WHERE username=0x57696e6e6965 AND password=0x31323334), 
+	userid, username)
+--------------------------------------------------
+
+So, we've seen attacks directed at PHP variables playing the roles of 
+string values, integer values and integer parameters to LIMIT. Sometimes 
+a lazy developer will want to make another part of her query dynamic: 
+the column names. Example 9 shows a "typical" use: we want to list all 
+members, and we want the user to choose a column on which to sort them. 
+Tests 1-3 are straightforward (although the security-minded should raise 
+an eyebrow at test 3 ... it uses a column name that is not in the query, 
+don't mind that for now). Test 4 shows what happens if the table has no 
+such column, test 5 shows that even though quotes are escaped, they can 
+still "break" the syntax of the query. Test 6 attempts to use the UNION 
+injection, only to find that a correct use of UNION and ORDER BY requires 
+parentheses around the two SELECTS that we want UNION of, which is not 
+possible here, because we have only a single point of injection.
+
+So what can the attacker do? The answer is "Blind SQL injection" ([3], [4]). 
+Since the attacker can't use quotes, he must either use the hexadecimal 
+format mentioned in the previous section, or use a combination of CONCAT()
+and CHAR(). Test 7 checks if there is a username 'Winnie' and password 
+'Pooh', and if so, orders the results by userid, if not - by username. 
+(This is the IF() MySQL function [19], not to be confused with the IF 
+statement of the stored routine syntax) Since the apparent order is by 
+userid, the attacker concludes that the statement he checked for is true. 
+Test 8 tries Winnie/1234, and since the results are ordered by username, 
+the fact must be wrong.
+
+
+---------[ Example A. (members2_not_fixed.php) ]------------
+$order = isset($_GET['o']) ? $_GET['o'] : 'userid';
+$order = mysql_real_escape_string($order);
+RunQuery("SELECT userid, username FROM sql_injection_test ORDER BY `$order`");
+---------[ Tests: ]------------------------------
+...
+9. o=userid`,IF ( (SELECT userid FROM sql_injection_test
+	 	WHERE username=0x57696e6e6965 AND password=0x506f6f68), 
+	BENCHMARK(300000,MD5(1)), username), `userid
+10. o=userid`,IF ( (SELECT userid FROM sql_injection_test 
+		WHERE username=0x57696e6e6965 AND password=0x31323334), 
+	BENCHMARK(300000,MD5(1)), username), `userid
+--------------------------------------------------
+
+The problem here seems similar to that in Example 3 - the column name is 
+not properly quoted (the MySQL manual ([11]) states that "The identifier 
+quote character is the backtick (`)" ). Indeed the proper quoting in 
+Example A stops the attack vectors in tests 7 and 8. What we can't stop 
+is the attacker simply closing the backtick quote and injecting SQL after 
+the column name, as mysql_real_escape_string() does not escape backticks. 
+As we noted, UNION will not work after ORDER BY, so the attacker resorts 
+to another blind injection technique - slowing the query on condition. 
+On my machine test 9 takes about 3 seconds (meaning the tested condition 
+is true), whereas test 10 finishes with no delay.
+
+---------[ Example B. (members2_fixed.php) ]------------
+$order = isset($_GET['o']) ? $_GET['o'] : 'userid';
+if (!in_array($order, Array('userid','username')))
+    $order = 'userid';
+RunQuery("SELECT `userid`, `username` FROM `sql_injection_test` 
+	ORDER BY `$order`");
+--------------------------------------------------------
+
+The actual problem of the query is not just the quoting of the column 
+name (although it is a good style to always use proper quotes), but the 
+fact that user-supplied input is used as a column name. Test 4 with the 
+non-existent column should have been the alarm-rising factor even before 
+having a proof that an SQL injection is possible. Example B shows a 
+possible solution, where only a fixed number of options are allowed.
+
+Note that the same applies for other identifiers and syntactic elements 
+that a programmer may wish to dynamically copy from the input to a query, 
+such as table names, column aliases, ASC/DESC keywords, etc.
+
+7. Do You LIKE My %WildCard%?
+
+MySQL (and other databases) has several matching operators ([12], [13]) 
+that accept wildcard symbols or regular expressions, these are most 
+often used in processing search forms. What this means is that within 
+the SQL query we have a part (a wildcard or regexp matching sequence) 
+which behaves differently than the usual SQL syntax. For our tests we 
+will do two things. First, an additional index with length 3 is added 
+on the `username` field. Second, instead of returning results of the 
+query, we will use the EXPLAIN syntax and observe how our index is used.
+
+---------[ Example C. (search.php) ]------------
+$search = isset($_GET['s']) ? $_GET['s'] : '';
+if ($search!='')  {
+    $search = mysql_real_escape_string($search);
+    RunQuery("EXPLAIN SELECT userid, username FROM sql_injection_test 
+	WHERE `username` LIKE '$search%'");
+}
+---------[ Tests: ]------------------------------
+1. s=Wi
+2. s=%Wi
+--------------------------------------------------
+
+Example C shows a typical wildcard search of usernames. Our first 
+test behaves as expected:
+
+---------[ Test 1 result: ]------------------------------------------------------------------------
+id  select_type table	            type   possible_keys key      key_len ref rows Extra
+1   SIMPLE      sql_injection_test  range  username      username 11           1   Using where
+---------------------------------------------------------------------------------------------------
+
+As we can see from the "possible_keys" and "key" values, our index 
+(named `username`) was used for determining the result set (we also notice 
+that "rows" is 1, meaning that the index helped MySQL narrow the search 
+to only one row without having to go through all rows in our table).
+
+---------[ Test 2 result: ]------------------------------------------------------------------------
+id select_type	table	            type  possible_keys key key_len ref	rows Extra
+1  SIMPLE       sql_injection_test  ALL                                  3   Using where
+---------------------------------------------------------------------------------------------------
+
+Test 2 is drastically different though - no index was used and all 3 rows 
+of the table have to be checked against the wildcard. The reason for that 
+is that a leading wildcard character (%) makes our prefix index useless, 
+since the string we search for may begin with any character. This happened, 
+because we successfully injected a %, which has a special meaning in the 
+context of the LIKE operator (and so is not a subject to 
+mysql_real_escape_string() escaping). It may not seem an issue for our 3 
+rows of data, but imagine a database of thousands or millions of rows 
+which suddenly cannot use an index, but has to go through all that data. 
+Depending on how the script is written, even a single user may be able 
+to carry out a DOS attack.
+
+---------[ Example D. (search_fixed.php) ]------------
+$search = isset($_GET['s']) ? $_GET['s'] : '';
+if ($search!='')  {
+    $search = mysql_real_escape_string($search);
+    $search = addcslashes($search, "%_");
+    RunQuery("EXPLAIN SELECT `userid`, `username` FROM `sql_injection_test` 
+	WHERE `username` LIKE '$search%'");
+}
+---------[ Tests: ]------------------------------
+1. s=Wi
+2. s=%Wi
+3. s=\%Wi
+--------------------------------------------------
+
+The solution demonstrated in Example D is to make a second escaping pass 
+after mysql_real_escape_string() for all variables that are replaced 
+within the LIKE operator. Now tests 1 and 2 behave correctly. The 
+addcslashes() function is handy, because it places a backslash (\) before 
+the given characters, and the backslash happens to be the default escape 
+characters for the expression on the right side of the LIKE operator.
+
+Note that MySQL allows the choosing of another escape character 
+(... WHERE `username` LIKE '*%' ESCAPE '*' will match a literal %) but if 
+you do so, you cannot use the addcslashes() function anymore, you will 
+need a replacement function. In the said replacement function, you would 
+also need to escape the new LIKE escape character, or it could be used 
+for a wildcard injection (though not in the beginning of the string, so 
+the DOS impact would not be as big).
+
+Test 3 demonstrates that in our case we don't need to escape the LIKE 
+escape character, as mysql_real_escape_string() already escaped it.
+
+When dealing with regular expressions (REGEXP/RLIKE operator) the escaping 
+method cannot be as simple as addcslashes(), so a programmer who wants 
+to use this operator should be doubly careful how she handles user input.
+
+8. Other Databases and Other Issues
+
+There are features of non-MySQL databases which can also be used when 
+injecting SQL, which can be solved by following the same checklist, 
+just replace mysql_real_escape_string() with the proper database-specific 
+escaping functions. The PostgreSQL extension for example has 
+pg_escape_string(), and if there is no similar function for  your database 
+system, you should check its documentation on how to do proper escaping.
+
+MSSQL, PostgreSQL and maybe other databases (including MySQL with the 
+mysqli extension) support issuing of multiple queries in one call. 
+Since the syntactic character used for statement terminator, the semicolon, 
+is not escaped by the standard escaping functions, unquoted parameters 
+in the SQL query can be used to terminate the current statement and issue 
+another. Of course, if all parameters are properly quoted and type-forced, 
+the semicolon will either be stripped, or be a part of a value literal, 
+thus not breaking the query. MSSQL also has a reserved word, TOP, used 
+in a similar way as MySQL's LIMIT, whereas PostgreSQL has LIMIT/OFFSET. 
+The considerations of section 5 of this article should be applied when 
+using those.
+
+9. A Summary in Plaintext
+
+As we saw, mysql_real_escape_string() is a necessary, but not sufficient 
+measure. Here are the "checklist" rules one must follow to make sure the 
+dynamic SQL code is not vulnerable to SQL injection:
+
+    1. Write properly quoted SQL:
+        1.1. Single quotes around values (string literals and numbers)
+        1.2. Backtick quotes around identifiers (databases, tables, columns, aliases)
+    2. Properly escape the strings and numbers:
+        2.1. mysql_real_escape_string() for all values (string literals and numbers)
+        2.2. intval() for all number values and the numeric parameters of LIMIT
+        2.3. Escape wildcard/regexp metacharacters 
+                (addcslashes('%_') for LIKE, and you better avoid REGEXP/RLIKE)
+        2.4. If identifiers (columns, tables or databases) or keywords 
+                (such as ASC and DESC) are referenced in the script parameters, 
+                make sure (and force) their values are chosen only as one of an 
+                explicit set of options
+        2.5. No matter what validation steps you take when processing the user 
+                input in your scripts, always do the escaping steps before 
+                issuing the query. Validation is not a substitute for escaping!
+
+
+(Hint: Did you notice how the "fixed" versions were pedantic in their use 
+of backticks? The author is personally convinced that it increases the 
+readability of the queries by making a clearer distinction between 
+identifiers and values. It also helps in situations where a novice 
+programmer tries to use a keyword for an identifier, shortening 
+"description" to "desc" being the most common case. Since source code 
+is read more times than it is written, readability is directly correlated 
+to security. Pedantic quoting thus has a twofold bonus when writing 
+secure code.)
+
+10. About
+
+Alexander "Mordred" Andonov is an independent security researcher and 
+consultant. His security interests lie in developing methodologies for 
+secure web programming and studying how real-world applications deal 
+(or fail to deal) with security problems. 
+He can be reached at sir(point)mordred(on)gmail.
+
+11. References
+
+[1] "SQL Injection: Are your web applications vulnerable?" by Kevin Spett
+		http://www.spidynamics.com/support/whitepapers/WhitepaperSQLInjection.pdf
+[2] "Advanced SQL Injection In SQL Server Applications" by Chris Anley
+		http://www.ngssoftware.com/papers/advanced_sql_injection.pdf
+[3] "Blind SQL Injection: Are your web applications vulnerable?" by Kevin Spett
+		http://www.spidynamics.com/support/whitepapers/Blind_SQLInjection.pdf
+[4] "Blind Sql-Injection in MySQL Databases" by Zeelock
+		http://seclists.org/bugtraq/2005/Feb/0288.html
+[5] "SQL Injection Cheat Sheet" by Ferruh Mavituna
+		http://ferruh.mavituna.com/makale/sql-injection-cheatsheet/
+[6] "SQL Injection Cheat Sheet" by David Kierznowski
+		http://michaeldaw.org/sql-injection-cheat-sheet/
+[7] "PHP Manual :: SQL Injection"
+		http://php.net/manual/en/security.database.sql-injection.php
+[8] "Security Corner: SQL Injection" by Chris Shiflett
+		http://shiflett.org/articles/sql-injection
+[9] "PHP Manual :: mysql_real_escape_string()"
+		http://php.net/mysql_real_escape_string
+[10] "addslashes() Versus mysql_real_escape_string()" by Chris Shiflett
+		http://shiflett.org/blog/2006/jan/addslashes-versus-mysql-real-escape-string
+[11] "MySQL Reference Manual :: Identifiers"
+		http://dev.mysql.com/doc/refman/5.1/en/identifiers.html
+[12] "MySQL Reference Manual :: String Comparison Functions :: LIKE"
+		http://dev.mysql.com/doc/refman/5.1/en/string-comparison-functions.html#operator_like
+[13] "MySQL Reference Manual :: Regular Expressions :: REGEXP / RLIKE"
+		http://dev.mysql.com/doc/refman/5.1/en/regexp.html
+[14] "PHP Security Guide" by Chris Shiflett
+		http://shiflett.org/php-security.pdf
+[15] "SQL Injection Attacks" by Prof. Jim Whitehead
+		http://www.cse.ucsc.edu/classes/cmps183/Spring06/lectures/SQL%20Injection%20Attacks.pdf
+[16] "Guide to PHP Security: Chapter 3. SQL Injection" by Ilia Alshanetsky
+		http://dev.mysql.com/tech-resources/articles/guide-to-php-security-ch3.pdf
+[17] "OWASP :: Avoiding SQL Injection"
+		http://www.owasp.org/index.php/Avoiding_SQL_Injection#WARNING:_Escaping_table_names
+[18] "PHP Manual :: mysql_real_escape_string()", web archive copy from Dec 2005
+		http://web.archive.org/web/20051217125937/us3.php.net/mysql_real_escape_string
+[19] "MySQL Reference Manual :: Control Flow Functions :: IF()"
+		http://dev.mysql.com/doc/refman/5.1/en/control-flow-functions.html#function_if
+
+
+
+The current copy of this document can be here:
+http://www.webappsec.org/projects/articles/ <http://www.webappsec.org/articles/>
+
+Information on the Web Application Security Consortium's Article Guidelines can be found here:
+http://www.webappsec.org/projects/articles/guidelines.shtml
+
+A copy of the *license* for this document can be found here:
+http://www.webappsec.org/projects/articles/license.shtml

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>InfiniteScroll</title>
+    <script src="http://www.jq22.com/jquery/jquery-1.10.2.js"></script>
+    <script src="../src/3.0.2/infinite-scroll.pkgd.min.js"></script>
+</head>
+<body>
+    <div id="container" align="center">
+
+    </div>
+    <div id="navigation" align="center">
+        <!-- 页面导航-->
+        <a href="page.php?page=0"></a>
+        <!-- 此处可以是url，可以是action，要注意不是每种html都可以加，是跟当前网页有相同布局的才可以。另外一个重要的地方是page参数，这个一定要加在这里，它的作用是指出当前页面页码，没加载一次数据，page自动+1,我们可以从服务器用request拿到他然后进行后面的分页处理。-->
+    </div>
+    <script>
+        $(function(){
+            $.ajax({
+                url: 'page.php',
+                type: 'get',
+                data:"page=0",
+                success: function (html) {   //成功后回调
+                    $("#container").append(html);
+                }
+            });
+        });
+        $("#container").infiniteScroll({
+            navSelector: "#navigation",     //页面分页元素--成功后自动隐藏
+            nextSelector: "#navigation a",
+            itemSelector: "#container" ,
+            history: 'push',
+            animate: true,
+            maxPage: 3,
+            append: '.post',
+            path: function() { //获取下一页方法
+                var index = ( this.loadCount + 1 );
+                return "page.php?page=" + index;
+            },
+        });
+    </script>
+</body>
+</html>
