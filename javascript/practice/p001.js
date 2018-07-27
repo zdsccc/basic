@@ -16,3 +16,5 @@ for (var index in price_ladder) {
 
 console.log(volume_price);
 
+
+
