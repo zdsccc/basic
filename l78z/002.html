@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>what is real friend</title>
+</head>
+<body>
+    <span id="what-is-real-friend"></span>
+<script>
+    var real_friend_html = "<p>曾经有个说法，交朋友要交心。理由是看中他的权势，那么权势有可能落空；看重他的财富，那么财富有可能花完；看重他对你的感情，但感情有可能变淡；只有看重他的心他的品性，这个人永远不会变。</p><p>这个说法有一定道理，俗话说江山易改，本性难移嘛。</p><p>亚里士多德给出了朋友的定义，有爱的定义，那就是有人真心希望你过得好。</p><p>可为什么会有人希望你过得好呢？常见的可能有两种原因，一种是，他的利益跟你的利益有所牵扯，你过得好，那他可能也过得好；另一种是，他是一个好人，他希望他的每个人都过得好。</p><p>知人知面不知心，现在的社会，每个人都看不透，我就曾经上过朋友的当，或许是我把他当做朋友，而人家却不是。</p><p>去考察人的本性，然后再跟他做朋友。而不是因为利益的结合而走到一起。朋友不贵多而在于精，很多事物都是这样，质量是重于数量的。</p><p>说到底，利益就只有那么多，宁愿牺牲自己的利益，而让别人过的好，这是一种人品的表现。</p>";
+    // g是global，执行全局匹配，而不是找到第一个就完事了
+    real_friend_html_without_tag = real_friend_html.replace(/<[\/]?p>/g, "");
+    console.log(real_friend_html_without_tag);
+    document.getElementById("what-is-real-friend").innerHTML = real_friend_html_without_tag;
+</script>
+</body>
+</html>
