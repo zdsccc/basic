@@ -7,7 +7,7 @@ var b = a;
 a = 10;
 console.log(b);// 4
 
-// 引用传值 low copy
+// 引用传值 shallow copy
 // 相当于地址拷贝
 // array、object、function
 // 该种情况，只要对变量进行赋值就会进行对内存的重新申请。
