@@ -1,5 +1,5 @@
 
-// 值传递
+// 值传递 deep copy
 // 相当于值拷贝
 // 基本数据类型：number、string、boolean、undefined、null
 var a = 4;
@@ -7,7 +7,7 @@ var b = a;
 a = 10;
 console.log(b);// 4
 
-// 引用传值
+// 引用传值 low copy
 // 相当于地址拷贝
 // array、object、function
 // 该种情况，只要对变量进行赋值就会进行对内存的重新申请。
