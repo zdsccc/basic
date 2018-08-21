@@ -1,4 +1,3 @@
-<script>
 function isString (o) { //是否字符串
     return Object.prototype.toString.call(o).slice(8, -1) === 'String'
 }
@@ -49,4 +48,7 @@ function isTrue (o) {
     return !this.isFalse(o)
 }
 console.log(isString("521521"));
-</script>
+
+
+
+
