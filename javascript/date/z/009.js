@@ -100,8 +100,25 @@
 // var dt = new Date();
 // console.log(dt.toTimeString());// 17:38:59 GMT+0800 (中国标准时间)
 
-var dt = new Date();
-console.log(dt.toLocaleDateString());// 2018/8/21
+// var dt = new Date();
+// console.log(dt.toLocaleDateString());// 2018/8/21
+//
+// var dt = new Date();
+// console.log(dt.toLocaleTimeString());// 下午5:41:41
 
-var dt = new Date();
-console.log(dt.toLocaleTimeString());// 下午5:41:41
+// not standard method
+// var dt = new Date(1993, 6, 28, 14, 39, 7);
+// console.log(dt.to());
+
+// var dt = new Date();
+// console.log(dt.valueOf());// 1534900920713
+
+// var date = new Date();
+// console.log(date); // Wed Aug 22 2018 09:26:21 GMT+0800 (中国标准时间)
+//
+// var jsonDate = (date).toJSON();
+// console.log(jsonDate); // 2018-08-22T01:26:21.080Z
+//
+// var backToDate = new Date(jsonDate);
+// console.log(backToDate); // Wed Aug 22 2018 09:26:21 GMT+0800 (中国标准时间)
+
