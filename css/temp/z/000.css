@@ -1,0 +1,18 @@
+/*设置段落默认格式*/
+p{
+    font-size:12px;
+    color:red;
+}
+/*多元素选择器*/
+h2, #subid, .subclass {
+    background-color:Green;
+}
+/*表示 div 下的 input 子元素*/
+div input {
+    background-color:Green
+}
+/*表示 table 的 class 为 showInfo_tabel 时，下面的 tr 元素 height 属性为 20px*/
+.showInfo_tabel tr {
+    height:20px;
+}
+
