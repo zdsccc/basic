@@ -7,11 +7,13 @@ var singleNumber = function(nums) {
     var a;
     for (var index = 0, leng=nums.length; index < leng; index++){
         a ^= nums[index];
+        console.log(a);
     }
+
     return a;
 };
 var nums = [5, 5, 5, 6, 5];
-console.log(singleNumber(nums));// 6
+// console.log(singleNumber(nums));// 6
 
 // 怎么实现字符？
 var strs = ['k', 'k', 'k', 'm', 'k'];

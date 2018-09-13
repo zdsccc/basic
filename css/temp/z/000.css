@@ -15,4 +15,16 @@ div input {
 .showInfo_tabel tr {
     height:20px;
 }
+textarea[readonly="readonly"] {
+    background-color: #EBEBEB;
+}
+.readOnlyBg input[type="text"][readonly="readonly"] {
+    background-color: #EBEBEB;
+}
+a :link, :visited {
+    color:Blue;
+}
+.btn_login:hover {
+    background-color: #218fd5;
+}
 
