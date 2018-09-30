@@ -1,0 +1,25 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<meta charset="UTF-8">
+</head>
+<body>
+<script>
+    function ShowFileName(){
+        var file;
+        var l = document.getElementById("file").files.length;
+        console.log(l);
+        // for (var i = 0;i < l;i++) {
+        //     file = document.getElementById("file").files[i];
+        //     console.log(file);
+        // }
+    }
+</script>
+<form action="" method="post">
+    选择图片：<input type="file" id="file" name="img" multiple="multiple" size="2" />
+    <input type="button" value="上传文件" onclick="ShowFileName()" />
+</form>
+<p>请尝试在浏览文件时选取一个以上的文件。</p>
+
+</body>
+</html>

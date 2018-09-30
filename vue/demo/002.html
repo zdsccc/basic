@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>vue双向绑定的原理测试</title>
+</head>
+
+<body>
+手写一个简单双向绑定<br />
+<input type="text" id="model"><br />
+<div id="modelText"></div>
+<script>
+    /*
+     * @Author: 曾经的水哥  https://www.cnblogs.com/cengjingdeshuige/
+     * @Date: 2018-09-25 15:14:59
+     * @Last Modified by: mikey.zhaopeng
+     * @Last Modified time: 2018-09-25 15:15:50
+     */
+
+    var user = {};
+    var defaultName = ''
+    var model = document.querySelector("#model")
+    var mo5delText = document.querySelector("#modelText");
+    model.value = defaultName
+    modelText.textContent = defaultName
+
+    // 定义属性 监控改变
+    Object.defineProperty(user, 'name', {
+        get: function () {
+            console.log('获取值')
+            return defaultName
+        },
+        set: function (newValue) {
+            console.log('设置新的值')
+            defaultName = newValue
+            model.value = newValue
+            modelText.textContent = newValue
+        }
+    })
+
+    model.addEventListener('keyup', function () {
+        user.name = this.value
+        console.log('取值')
+    }, false)
+
+    // 获取值
+    console.log(user.name)
+</script>
+</body>
+
+
+</html>
